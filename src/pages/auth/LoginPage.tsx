@@ -3,9 +3,7 @@ import { Lock, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { GithubLogo, GoogleLogo } from '../../components/ui/SocialLogos'
-import { api } from '../../services/api'
-
-const AUTH_SERVER_BASE_URL = 'https://localhost:7234' // TODO: verify backend port
+import { API_BASE_URL, api, extractAccessToken, setAccessToken } from '../../services/api'
 
 interface LoginFormState {
   email: string
@@ -66,10 +64,15 @@ const LoginPage = () => {
     setFormError(null)
 
     try {
-      await api.post('/auth/login', {
+      const response = await api.post('/auth/login', {
         email: form.email.trim(),
         password: form.password,
       })
+
+      const accessToken = extractAccessToken(response.data)
+      if (accessToken) {
+        setAccessToken(accessToken)
+      }
 
       navigate('/')
     } catch (error) {
@@ -180,14 +183,14 @@ const LoginPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <a
-              href={`${AUTH_SERVER_BASE_URL}/auth/external-login?provider=Google`}
+              href={`${API_BASE_URL}/auth/external-login?provider=Google`}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-800"
             >
               <GoogleLogo />
               Google
             </a>
             <a
-              href={`${AUTH_SERVER_BASE_URL}/auth/external-login?provider=GitHub`}
+              href={`${API_BASE_URL}/auth/external-login?provider=GitHub`}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-800"
             >
               <GithubLogo />
