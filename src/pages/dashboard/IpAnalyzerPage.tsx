@@ -6,14 +6,17 @@ import { api } from '../../services/api'
 interface IpAnalyzeResult {
   success?: boolean
   ip?: string
+  query?: string
   country?: string
   city?: string
   region?: string
+  regionName?: string
   isp?: string
   timezone?: string
   latitude?: number
   longitude?: number
   message?: string
+  errorMessage?: string
 }
 
 const getApiErrorMessage = (error: unknown, fallback: string) => {
@@ -31,24 +34,57 @@ const IpAnalyzerPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  const normalizeResult = (data: IpAnalyzeResult): IpAnalyzeResult => {
+    return {
+      ...data,
+      ip: data.ip ?? data.query,
+      region: data.region ?? data.regionName,
+      message: data.message ?? data.errorMessage,
+    }
+  }
+
+  const resolvePublicIp = async () => {
+    const response = await fetch('https://api.ipify.org?format=json')
+    if (!response.ok) {
+      throw new Error('Failed to resolve public IP.')
+    }
+
+    const data = (await response.json()) as { ip?: string }
+    if (!data.ip) {
+      throw new Error('Public IP was not returned.')
+    }
+
+    return data.ip
+  }
+
   const handleAnalyze = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsLoading(true)
     setErrorMessage(null)
 
     try {
-      const params = ip.trim() ? { ip: ip.trim() } : undefined
+      const normalizedIp = ip.trim() || (await resolvePublicIp())
+      const params = { ip: normalizedIp }
       const { data } = await api.get<IpAnalyzeResult>('/api/utilities/ip', { params })
+      const normalized = normalizeResult(data)
 
-      if (data.success === false) {
+      if (normalized.success === false) {
         setResult(null)
-        setErrorMessage(data.message ?? 'IP analysis failed.')
+        setErrorMessage(normalized.message ?? 'IP analysis failed.')
       } else {
-        setResult(data)
+        setResult(normalized)
+        if (!ip.trim()) {
+          setIp(normalizedIp)
+        }
       }
     } catch (error) {
       setResult(null)
-      setErrorMessage(getApiErrorMessage(error, 'Unable to analyze IP address.'))
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          'Unable to analyze IP address. Please provide an explicit IP and try again.',
+        ),
+      )
     } finally {
       setIsLoading(false)
     }
