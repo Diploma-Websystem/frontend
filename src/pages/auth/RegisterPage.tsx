@@ -12,6 +12,12 @@ interface RegisterFormState {
   confirmPassword: string
 }
 
+const EXTERNAL_LOGIN_RETURN_URL =
+  typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : '/dashboard'
+
+const googleExternalLoginHref = `${API_BASE_URL}/auth/external-login?provider=Google&returnUrl=${encodeURIComponent(EXTERNAL_LOGIN_RETURN_URL)}`
+const githubExternalLoginHref = `${API_BASE_URL}/auth/external-login?provider=GitHub&returnUrl=${encodeURIComponent(EXTERNAL_LOGIN_RETURN_URL)}`
+
 const getApiErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     const responseData = error.response?.data as
@@ -93,7 +99,7 @@ const RegisterPage = () => {
       const accessToken = extractAccessToken(response.data)
       if (accessToken) {
         setAccessToken(accessToken)
-        navigate('/')
+        navigate('/dashboard', { replace: true })
         return
       }
 
@@ -270,14 +276,14 @@ const RegisterPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <a
-              href={`${API_BASE_URL}/auth/external-login?provider=Google`}
+              href={googleExternalLoginHref}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-800"
             >
               <GoogleLogo />
               Google
             </a>
             <a
-              href={`${API_BASE_URL}/auth/external-login?provider=GitHub`}
+              href={githubExternalLoginHref}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-800"
             >
               <GithubLogo />

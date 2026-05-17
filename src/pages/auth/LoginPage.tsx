@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Lock, Mail } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { GithubLogo, GoogleLogo } from '../../components/ui/SocialLogos'
 import { API_BASE_URL, api, extractAccessToken, setAccessToken } from '../../services/api'
@@ -9,6 +9,12 @@ interface LoginFormState {
   email: string
   password: string
 }
+
+const EXTERNAL_LOGIN_RETURN_URL =
+  typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : '/dashboard'
+
+const googleExternalLoginHref = `${API_BASE_URL}/auth/external-login?provider=Google&returnUrl=${encodeURIComponent(EXTERNAL_LOGIN_RETURN_URL)}`
+const githubExternalLoginHref = `${API_BASE_URL}/auth/external-login?provider=GitHub&returnUrl=${encodeURIComponent(EXTERNAL_LOGIN_RETURN_URL)}`
 
 const getApiErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
@@ -28,6 +34,7 @@ const getApiErrorMessage = (error: unknown) => {
 }
 
 const LoginPage = () => {
+  const location = useLocation()
   const navigate = useNavigate()
   const [form, setForm] = useState<LoginFormState>({ email: '', password: '' })
   const [formError, setFormError] = useState<string | null>(null)
@@ -74,7 +81,11 @@ const LoginPage = () => {
         setAccessToken(accessToken)
       }
 
-      navigate('/')
+      const redirectPath =
+        (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ??
+        '/dashboard'
+
+      navigate(redirectPath, { replace: true })
     } catch (error) {
       setFormError(getApiErrorMessage(error))
     } finally {
@@ -183,14 +194,14 @@ const LoginPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <a
-              href={`${API_BASE_URL}/auth/external-login?provider=Google`}
+              href={googleExternalLoginHref}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-800"
             >
               <GoogleLogo />
               Google
             </a>
             <a
-              href={`${API_BASE_URL}/auth/external-login?provider=GitHub`}
+              href={githubExternalLoginHref}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 font-medium text-gray-300 transition-colors hover:bg-gray-800"
             >
               <GithubLogo />
