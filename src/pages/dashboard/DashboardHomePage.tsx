@@ -14,6 +14,7 @@ const tools = [
     title: 'QR Generator',
     description: 'Create PNG QR code from URL or text',
     color: 'from-blue-500 to-cyan-500',
+    accent: 'text-cyan-300/90',
     path: '/dashboard/qr-generator',
   },
   {
@@ -21,6 +22,7 @@ const tools = [
     title: 'URL Shortener',
     description: 'Generate short links instantly',
     color: 'from-indigo-500 to-purple-500',
+    accent: 'text-violet-300/90',
     path: '/dashboard/url-shortener',
   },
   {
@@ -28,6 +30,7 @@ const tools = [
     title: 'JSON Formatter',
     description: 'Format or minify JSON payload',
     color: 'from-purple-500 to-pink-500',
+    accent: 'text-fuchsia-300/90',
     path: '/dashboard/json-formatter',
   },
   {
@@ -35,6 +38,7 @@ const tools = [
     title: 'IP Analyzer',
     description: 'Inspect geolocation and provider data',
     color: 'from-emerald-500 to-teal-500',
+    accent: 'text-emerald-300/90',
     path: '/dashboard/ip-analyzer',
   },
   {
@@ -42,6 +46,7 @@ const tools = [
     title: 'File Converter',
     description: 'Convert image files between formats',
     color: 'from-orange-500 to-red-500',
+    accent: 'text-orange-300/90',
     path: '/dashboard/file-converter',
   },
 ]
@@ -57,7 +62,7 @@ const DashboardHomePage = () => {
           <p className="text-lg text-gray-400">Choose a tool and start working.</p>
         </header>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {tools.map((tool) => {
             const Icon = tool.icon
 
@@ -65,18 +70,28 @@ const DashboardHomePage = () => {
               <Link
                 key={tool.path}
                 to={tool.path}
-                className="group rounded-xl border border-gray-800 bg-gray-900 p-6 transition-all hover:border-gray-700 hover:shadow-lg hover:shadow-indigo-500/10"
+                className="group relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900/90 to-slate-800/80 p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-400/35 hover:shadow-[0_8px_30px_rgba(79,70,229,0.18)]"
               >
-                <div className="mb-4 flex items-start justify-between">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(99,102,241,0.18),transparent_55%)] opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+                <Icon
+                  className={[
+                    'pointer-events-none absolute right-3 top-3 h-20 w-20 stroke-1 opacity-12 transition-opacity duration-300 group-hover:opacity-20',
+                    tool.accent,
+                  ].join(' ')}
+                />
+
+                <div className="relative z-10 mb-5">
                   <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${tool.color}`}
+                    className={`flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br ${tool.color} shadow-lg shadow-black/25`}
                   >
-                    <Icon className="h-6 w-6 text-white" />
+                    <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <ArrowRight className="h-5 w-5 text-gray-600 transition-all group-hover:translate-x-1 group-hover:text-indigo-400" />
                 </div>
-                <h2 className="mb-2 text-xl font-semibold text-white">{tool.title}</h2>
-                <p className="text-sm leading-relaxed text-gray-400">{tool.description}</p>
+                <h2 className="relative z-10 mb-1.5 pr-10 text-2xl font-semibold text-white">{tool.title}</h2>
+                <p className="relative z-10 text-sm leading-relaxed text-slate-300/80">
+                  {tool.description}
+                </p>
+                <ArrowRight className="absolute bottom-4 right-4 h-5 w-5 text-slate-500 transition-all group-hover:translate-x-1 group-hover:text-indigo-300" />
               </Link>
             )
           })}
