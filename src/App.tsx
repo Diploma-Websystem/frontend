@@ -8,6 +8,7 @@ import FileConverterPage from './pages/dashboard/FileConverterPage'
 import IpAnalyzerPage from './pages/dashboard/IpAnalyzerPage'
 import JsonFormatterPage from './pages/dashboard/JsonFormatterPage'
 import QrGeneratorPage from './pages/dashboard/QrGeneratorPage'
+import SettingsPage from './pages/dashboard/SettingsPage'
 import UrlShortenerPage from './pages/dashboard/UrlShortenerPage'
 
 const router = createBrowserRouter([
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { path: 'json-formatter', element: <JsonFormatterPage /> },
       { path: 'ip-analyzer', element: <IpAnalyzerPage /> },
       { path: 'file-converter', element: <FileConverterPage /> },
+      { path: 'settings', element: <SettingsPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },

@@ -9,6 +9,7 @@ import {
   LogOut,
   QrCode,
   Search,
+  Settings,
 } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { api, removeAccessToken } from '../../services/api'
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { label: 'JSON Formatter', path: '/dashboard/json-formatter', icon: FileJson },
   { label: 'IP Analyzer', path: '/dashboard/ip-analyzer', icon: Globe },
   { label: 'File Converter', path: '/dashboard/file-converter', icon: ImageIcon },
+  { label: 'Settings', path: '/dashboard/settings', icon: Settings },
 ]
 
 const DashboardLayout = () => {
