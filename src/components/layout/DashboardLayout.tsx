@@ -10,6 +10,7 @@ import {
   QrCode,
   Search,
   Settings,
+  Wrench,
 } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { api, removeAccessToken } from '../../services/api'
@@ -73,11 +74,13 @@ const DashboardLayout = () => {
   return (
     <div className="min-h-screen bg-gray-950 text-white md:flex">
       <aside className="border-b border-gray-800 bg-gray-900 md:sticky md:top-0 md:h-screen md:w-64 md:border-b-0 md:border-r">
-        <div className="border-b border-gray-800 px-6 py-5">
+        <div className="flex h-[73px] items-center border-b border-gray-800 px-6">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+              <Wrench className="h-5 w-5 text-white" />
+            </div>
             <div>
-              <p className="text-lg font-semibold">WebUtilities</p>
+              <p className="text-lg font-semibold">Utilify</p>
               <p className="text-xs text-gray-400">Dashboard</p>
             </div>
           </div>
@@ -127,8 +130,8 @@ const DashboardLayout = () => {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900/95 px-4 py-4 backdrop-blur sm:px-6">
-          <div className="flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900/95 px-4 backdrop-blur sm:px-6">
+          <div className="flex h-[73px] items-center justify-between gap-4">
             <div className="relative hidden max-w-xl flex-1 md:block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500" />
               <input
@@ -148,7 +151,7 @@ const DashboardLayout = () => {
           </div>
         </header>
 
-        <main className="flex-1">
+        <main className="flex-1 bg-slate-950 bg-[radial-gradient(#33415555_1px,transparent_1px)] [background-size:20px_20px]">
           <Outlet />
         </main>
       </div>

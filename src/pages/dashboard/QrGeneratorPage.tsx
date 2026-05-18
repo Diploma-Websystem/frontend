@@ -3,6 +3,9 @@ import { Download, Loader2, QrCode } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../../services/api'
 
+type QrSizeOption = '256' | '512' | '1024'
+type ErrorCorrectionOption = 'low' | 'medium' | 'high'
+
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as { message?: string; error?: string } | undefined
@@ -15,8 +18,13 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 const QrGeneratorPage = () => {
   const [text, setText] = useState('')
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+  const [qrSize, setQrSize] = useState<QrSizeOption>('256')
+  const [errorCorrection, setErrorCorrection] = useState<ErrorCorrectionOption>('low')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  const previewSizeClass =
+    qrSize === '1024' ? 'h-80 w-80' : qrSize === '512' ? 'h-72 w-72' : 'h-64 w-64'
 
   const handleGenerate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -31,7 +39,15 @@ const QrGeneratorPage = () => {
     setErrorMessage(null)
 
     try {
-      const response = await api.post('/api/utilities/qr', { text: normalizedText }, { responseType: 'blob' })
+      const response = await api.post(
+        '/api/utilities/qr',
+        {
+          text: normalizedText,
+          size: Number(qrSize),
+          errorCorrection,
+        },
+        { responseType: 'blob' },
+      )
       const blob = response.data as Blob
       const imageUrl = URL.createObjectURL(blob)
       setQrImageUrl((prev) => {
@@ -75,10 +91,39 @@ const QrGeneratorPage = () => {
               placeholder="https://example.com or any text"
               className="h-32 w-full resize-none rounded-lg border border-gray-800 bg-gray-950 px-4 py-3 text-white placeholder:text-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-gray-300">Size</span>
+                <select
+                  value={qrSize}
+                  onChange={(event) => setQrSize(event.target.value as QrSizeOption)}
+                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-3 text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="256">Small (256x256)</option>
+                  <option value="512">Medium (512x512)</option>
+                  <option value="1024">Large (1024x1024)</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-gray-300">Error Correction</span>
+                <select
+                  value={errorCorrection}
+                  onChange={(event) =>
+                    setErrorCorrection(event.target.value as ErrorCorrectionOption)
+                  }
+                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-3 text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+            </div>
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <QrCode className="h-5 w-5" />}
               {isLoading ? 'Generating...' : 'Generate QR'}
@@ -94,7 +139,11 @@ const QrGeneratorPage = () => {
           {qrImageUrl ? (
             <div className="mt-8 rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-6">
               <div className="mx-auto mb-5 w-fit rounded-lg bg-white p-4">
-                <img src={qrImageUrl} alt="Generated QR code" className="h-64 w-64 object-contain" />
+                <img
+                  src={qrImageUrl}
+                  alt="Generated QR code"
+                  className={`${previewSizeClass} object-contain`}
+                />
               </div>
               <button
                 type="button"
@@ -106,6 +155,15 @@ const QrGeneratorPage = () => {
               </button>
             </div>
           ) : null}
+        </div>
+
+        <div className="mt-6 rounded-xl border border-gray-800 bg-gray-900 p-6">
+          <h2 className="mb-3 text-2xl font-semibold text-white">Pro Tips</h2>
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li>- Higher error correction allows the QR code to be read even if partially damaged.</li>
+            <li>- Keep URLs short for simpler, easier-to-scan QR codes.</li>
+            <li>- Test your QR code with multiple devices before printing.</li>
+          </ul>
         </div>
       </div>
     </section>
