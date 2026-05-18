@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
 import {
   FileJson,
@@ -6,14 +6,13 @@ import {
   Home,
   Image as ImageIcon,
   Link2,
-  LogOut,
   QrCode,
   Search,
   Settings,
   Wrench,
 } from 'lucide-react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { api, removeAccessToken } from '../../services/api'
+import { NavLink, Outlet } from 'react-router-dom'
+import { api } from '../../services/api'
 
 interface NavItem {
   label: string
@@ -37,7 +36,6 @@ const navItems: NavItem[] = [
 ]
 
 const DashboardLayout = () => {
-  const navigate = useNavigate()
   const [userEmail, setUserEmail] = useState('user@webutilities.local')
 
   useEffect(() => {
@@ -54,22 +52,6 @@ const DashboardLayout = () => {
 
     loadMe()
   }, [])
-
-  const userInitials = useMemo(() => {
-    const first = userEmail[0] ?? 'U'
-    return first.toUpperCase()
-  }, [userEmail])
-
-  const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout')
-    } catch {
-      // local cleanup below is still sufficient
-    } finally {
-      removeAccessToken()
-      navigate('/login', { replace: true })
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white md:flex">
@@ -111,22 +93,6 @@ const DashboardLayout = () => {
           })}
         </nav>
 
-        <div className="hidden border-t border-gray-800 p-4 md:block">
-          <div className="mb-3 flex items-center gap-3 rounded-lg bg-gray-950 px-3 py-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-xs font-semibold">
-              {userInitials}
-            </div>
-            <p className="truncate text-sm text-gray-300">{userEmail}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
-        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -141,13 +107,6 @@ const DashboardLayout = () => {
               />
             </div>
             <p className="truncate text-sm text-gray-400">{userEmail}</p>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800 md:hidden"
-            >
-              Logout
-            </button>
           </div>
         </header>
 

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { KeyRound, Loader2, Save, Shield, UserRound } from 'lucide-react'
+import { KeyRound, Loader2, LogOut, Save, Shield, UserRound } from 'lucide-react'
 import axios from 'axios'
-import { api } from '../../services/api'
+import { useNavigate } from 'react-router-dom'
+import { api, removeAccessToken } from '../../services/api'
 
 interface AuthMeResponse {
   id?: string
   email?: string
+  userName?: string
   hasPassword?: boolean
   externalProviders?: string[]
 }
@@ -33,6 +35,7 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 }
 
 const SettingsPage = () => {
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<AuthMeResponse | null>(null)
   const [form, setForm] = useState<ChangePasswordFormState>({
     currentPassword: '',
@@ -115,6 +118,17 @@ const SettingsPage = () => {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // local cleanup below is sufficient
+    } finally {
+      removeAccessToken()
+      navigate('/login', { replace: true })
+    }
+  }
+
   if (isLoadingProfile) {
     return (
       <section className="flex min-h-[calc(100vh-73px)] items-center justify-center">
@@ -138,14 +152,12 @@ const SettingsPage = () => {
           </h2>
           <dl className="space-y-3 text-sm">
             <div className="flex items-center justify-between rounded-lg bg-gray-950 px-4 py-3">
-              <dt className="text-gray-400">Email</dt>
-              <dd className="font-medium text-white">{profile?.email ?? 'Unknown'}</dd>
+              <dt className="text-gray-400">Username</dt>
+              <dd className="font-medium text-white">{profile?.userName ?? 'Unknown'}</dd>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-gray-950 px-4 py-3">
-              <dt className="text-gray-400">Account Type</dt>
-              <dd className="font-medium text-white">
-                {isExternalOnlyAccount ? 'External login only' : 'Local password'}
-              </dd>
+              <dt className="text-gray-400">Email</dt>
+              <dd className="font-medium text-white">{profile?.email ?? 'Unknown'}</dd>
             </div>
             {providers.length > 0 ? (
               <div className="flex items-center justify-between rounded-lg bg-gray-950 px-4 py-3">
@@ -233,6 +245,21 @@ const SettingsPage = () => {
             Password changes are available only for local password accounts.
           </p>
         </form>
+
+        <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-6">
+          <h2 className="mb-3 text-lg font-semibold text-white">Session</h2>
+          <p className="mb-4 text-sm text-gray-300">
+            Sign out from your current account on this device.
+          </p>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 font-medium text-white transition-colors hover:bg-red-700"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
+        </div>
       </div>
     </section>
   )

@@ -6,7 +6,7 @@ import { GithubLogo, GoogleLogo } from '../../components/ui/SocialLogos'
 import { API_BASE_URL, api, extractAccessToken, setAccessToken } from '../../services/api'
 
 interface RegisterFormState {
-  fullName: string
+  userName: string
   email: string
   password: string
   confirmPassword: string
@@ -38,7 +38,7 @@ const getApiErrorMessage = (error: unknown) => {
 const RegisterPage = () => {
   const navigate = useNavigate()
   const [form, setForm] = useState<RegisterFormState>({
-    fullName: '',
+    userName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -53,7 +53,7 @@ const RegisterPage = () => {
   }
 
   const validate = () => {
-    if (!form.fullName.trim() || !form.email.trim() || !form.password.trim()) {
+    if (!form.userName.trim() || !form.email.trim() || !form.password.trim()) {
       return 'Please fill in all required fields.'
     }
 
@@ -90,8 +90,8 @@ const RegisterPage = () => {
     setFormError(null)
 
     try {
-      const response = await api.post('/auth/register', {
-        fullName: form.fullName.trim(),
+      const response = await api.post('/auth/register-local', {
+        userName: form.userName.trim(),
         email: form.email.trim(),
         password: form.password,
       })
@@ -145,8 +145,8 @@ const RegisterPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300" htmlFor="fullName">
-                Full Name
+              <label className="mb-2 block text-sm font-medium text-gray-300" htmlFor="userName">
+                Username
               </label>
               <div className="relative">
                 <User
@@ -154,12 +154,12 @@ const RegisterPage = () => {
                   size={20}
                 />
                 <input
-                  id="fullName"
+                  id="userName"
                   type="text"
-                  autoComplete="name"
-                  value={form.fullName}
-                  onChange={(event) => handleChange('fullName', event.target.value)}
-                  placeholder="John Doe"
+                  autoComplete="username"
+                  value={form.userName}
+                  onChange={(event) => handleChange('userName', event.target.value)}
+                  placeholder="john_doe"
                   className="w-full rounded-lg border border-gray-800 bg-gray-900 py-3 pl-11 pr-4 text-white placeholder:text-gray-500 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
