@@ -6,7 +6,7 @@ import { GithubLogo, GoogleLogo } from '../../components/ui/SocialLogos'
 import { API_BASE_URL, api, extractAccessToken, setAccessToken } from '../../services/api'
 
 interface LoginFormState {
-  email: string
+  emailOrUserName: string
   password: string
 }
 
@@ -36,7 +36,7 @@ const getApiErrorMessage = (error: unknown) => {
 const LoginPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [form, setForm] = useState<LoginFormState>({ email: '', password: '' })
+  const [form, setForm] = useState<LoginFormState>({ emailOrUserName: '', password: '' })
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -46,13 +46,8 @@ const LoginPage = () => {
   }
 
   const validate = () => {
-    if (!form.email.trim() || !form.password.trim()) {
+    if (!form.emailOrUserName.trim() || !form.password.trim()) {
       return 'Please fill in all required fields.'
-    }
-
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailPattern.test(form.email)) {
-      return 'Please enter a valid email address.'
     }
 
     return null
@@ -71,8 +66,8 @@ const LoginPage = () => {
     setFormError(null)
 
     try {
-      const response = await api.post('/auth/login', {
-        email: form.email.trim(),
+      const response = await api.post('/auth/login-local', {
+        emailOrUserName: form.emailOrUserName.trim(),
         password: form.password,
       })
 
@@ -127,8 +122,8 @@ const LoginPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300" htmlFor="email">
-                Email
+              <label className="mb-2 block text-sm font-medium text-gray-300" htmlFor="emailOrUserName">
+                Email or username
               </label>
               <div className="relative">
                 <Mail
@@ -136,12 +131,12 @@ const LoginPage = () => {
                   size={20}
                 />
                 <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={form.email}
-                  onChange={(event) => handleChange('email', event.target.value)}
-                  placeholder="you@example.com"
+                  id="emailOrUserName"
+                  type="text"
+                  autoComplete="username"
+                  value={form.emailOrUserName}
+                  onChange={(event) => handleChange('emailOrUserName', event.target.value)}
+                  placeholder="you@example.com or john_doe"
                   className="w-full rounded-lg border border-gray-800 bg-gray-900 py-3 pl-11 pr-4 text-white placeholder:text-gray-500 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
