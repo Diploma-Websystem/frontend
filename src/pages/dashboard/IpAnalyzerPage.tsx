@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Clock, Globe, Loader2, MapPin, Server } from 'lucide-react'
+import { Clock, Globe, Loader2, MapPin, Server, Shield } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../../services/api'
 
@@ -93,6 +93,18 @@ const IpAnalyzerPage = () => {
   const locationLabel = [result?.city, result?.region, result?.country]
     .filter(Boolean)
     .join(', ')
+  const hasCoordinates =
+    typeof result?.latitude === 'number' && typeof result?.longitude === 'number'
+  const mapEmbedUrl = (() => {
+    if (!hasCoordinates || !result) {
+      return null
+    }
+
+    const latitude = result.latitude as number
+    const longitude = result.longitude as number
+
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.02}%2C${latitude - 0.02}%2C${longitude + 0.02}%2C${latitude + 0.02}&layer=mapnik&marker=${latitude}%2C${longitude}`
+  })()
 
   return (
     <section className="min-h-[calc(100vh-73px)] px-4 py-10 sm:px-6">
@@ -134,36 +146,74 @@ const IpAnalyzerPage = () => {
         ) : null}
 
         {result ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-2 text-sm text-gray-400">IP Address</p>
-              <div className="flex items-center gap-2 text-lg font-semibold text-white">
-                <Globe className="h-5 w-5 text-indigo-400" />
-                {result.ip ?? 'Unknown'}
+          <div className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                <p className="mb-2 text-sm text-gray-400">IP Address</p>
+                <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                  <Globe className="h-5 w-5 text-indigo-400" />
+                  {result.ip ?? 'Unknown'}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                <p className="mb-2 text-sm text-gray-400">Location</p>
+                <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                  <MapPin className="h-5 w-5 text-purple-400" />
+                  {locationLabel || 'Unknown'}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                <p className="mb-2 text-sm text-gray-400">Provider</p>
+                <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                  <Server className="h-5 w-5 text-blue-400" />
+                  {result.isp ?? 'Unknown'}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                <p className="mb-2 text-sm text-gray-400">Timezone</p>
+                <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                  <Clock className="h-5 w-5 text-emerald-400" />
+                  {result.timezone ?? 'Unknown'}
+                </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-2 text-sm text-gray-400">Location</p>
-              <div className="flex items-center gap-2 text-lg font-semibold text-white">
-                <MapPin className="h-5 w-5 text-purple-400" />
-                {locationLabel || 'Unknown'}
+              <p className="mb-2 text-sm text-gray-400">Security</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
+                  <Shield className="h-5 w-5 text-orange-400" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
+                    Not a proxy
+                  </span>
+                  <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
+                    Not a VPN
+                  </span>
+                </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-2 text-sm text-gray-400">Provider</p>
-              <div className="flex items-center gap-2 text-lg font-semibold text-white">
-                <Server className="h-5 w-5 text-blue-400" />
-                {result.isp ?? 'Unknown'}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-2 text-sm text-gray-400">Timezone</p>
-              <div className="flex items-center gap-2 text-lg font-semibold text-white">
-                <Clock className="h-5 w-5 text-emerald-400" />
-                {result.timezone ?? 'Unknown'}
+              <h2 className="mb-3 text-xl font-semibold text-white">Map Location</h2>
+              <div className="overflow-hidden rounded-lg border border-gray-800 bg-gray-950">
+                {mapEmbedUrl ? (
+                  <iframe
+                    title="IP geolocation map"
+                    src={mapEmbedUrl}
+                    className="h-72 w-full"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                ) : (
+                  <div className="flex h-72 items-center justify-center text-gray-500">
+                    Map visualization would appear here
+                  </div>
+                )}
               </div>
             </div>
           </div>

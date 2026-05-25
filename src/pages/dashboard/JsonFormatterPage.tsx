@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Loader2, Minimize2, Play } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../../services/api'
@@ -24,6 +24,49 @@ const JsonFormatterPage = () => {
   const [isValid, setIsValid] = useState<boolean | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const lineHeightPx = 24
+  const [inputVisibleLines, setInputVisibleLines] = useState(20)
+  const [outputVisibleLines, setOutputVisibleLines] = useState(20)
+  const [inputScrollTop, setInputScrollTop] = useState(0)
+  const [outputScrollTop, setOutputScrollTop] = useState(0)
+  const inputBodyRef = useRef<HTMLDivElement | null>(null)
+  const outputBodyRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const updateVisibleLines = () => {
+      const inputHeight = inputBodyRef.current?.clientHeight ?? 0
+      const outputHeight = outputBodyRef.current?.clientHeight ?? 0
+
+      setInputVisibleLines(Math.max(1, Math.ceil(inputHeight / lineHeightPx) + 1))
+      setOutputVisibleLines(Math.max(1, Math.ceil(outputHeight / lineHeightPx) + 1))
+    }
+
+    updateVisibleLines()
+    window.addEventListener('resize', updateVisibleLines)
+
+    return () => window.removeEventListener('resize', updateVisibleLines)
+  }, [])
+
+  const inputLineCount = useMemo(
+    () => Math.max(inputVisibleLines, (input.match(/\n/g)?.length ?? 0) + 1),
+    [input, inputVisibleLines],
+  )
+
+  const outputContent = output || 'Processed JSON will appear here...'
+  const outputLineCount = useMemo(
+    () => Math.max(outputVisibleLines, (outputContent.match(/\n/g)?.length ?? 0) + 1),
+    [outputContent, outputVisibleLines],
+  )
+
+  const inputLineNumbers = useMemo(
+    () => Array.from({ length: inputLineCount }, (_, index) => index + 1),
+    [inputLineCount],
+  )
+
+  const outputLineNumbers = useMemo(
+    () => Array.from({ length: outputLineCount }, (_, index) => index + 1),
+    [outputLineCount],
+  )
 
   const processJson = async (action: JsonAction) => {
     if (!input.trim()) {
@@ -113,13 +156,29 @@ const JsonFormatterPage = () => {
             <div className="border-b border-gray-800 bg-gray-950 px-4 py-3">
               <p className="text-sm font-medium text-gray-300">Input</p>
             </div>
-            <textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder='{"name":"WebUtilities"}'
-              className="h-full min-h-0 flex-1 resize-none bg-gray-900 p-4 font-mono text-sm text-white placeholder:text-gray-500 focus:outline-none"
-              spellCheck={false}
-            />
+            <div ref={inputBodyRef} className="flex min-h-0 flex-1 overflow-hidden">
+              <div className="w-12 shrink-0 overflow-hidden border-r border-gray-800 bg-gray-950/60 px-2 py-4 text-right font-mono text-xs leading-6 text-gray-600">
+                <div
+                  style={{
+                    transform: `translateY(-${inputScrollTop}px)`,
+                  }}
+                >
+                  {inputLineNumbers.map((line) => (
+                    <div key={`input-line-${line}`} className="h-6">
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onScroll={(event) => setInputScrollTop(event.currentTarget.scrollTop)}
+                placeholder='{"name":"WebUtilities"}'
+                className="h-full min-h-0 flex-1 resize-none bg-gray-900 p-4 font-mono text-sm leading-6 text-white placeholder:text-gray-500 focus:outline-none"
+                spellCheck={false}
+              />
+            </div>
           </div>
 
           <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
@@ -138,11 +197,29 @@ const JsonFormatterPage = () => {
                 </span>
               ) : null}
             </div>
-            <pre className="h-full min-h-0 flex-1 overflow-auto p-4 font-mono text-sm leading-6">
-              <code className={isValid === false ? 'text-red-300' : 'text-gray-200'}>
-                {output || 'Processed JSON will appear here...'}
-              </code>
-            </pre>
+            <div ref={outputBodyRef} className="flex min-h-0 flex-1 overflow-hidden">
+              <div className="w-12 shrink-0 overflow-hidden border-r border-gray-800 bg-gray-950/60 px-2 py-4 text-right font-mono text-xs leading-6 text-gray-600">
+                <div
+                  style={{
+                    transform: `translateY(-${outputScrollTop}px)`,
+                  }}
+                >
+                  {outputLineNumbers.map((line) => (
+                    <div key={`output-line-${line}`} className="h-6">
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <pre
+                onScroll={(event) => setOutputScrollTop(event.currentTarget.scrollTop)}
+                className="h-full min-h-0 flex-1 overflow-auto p-4 font-mono text-sm leading-6"
+              >
+                <code className={isValid === false ? 'text-red-300' : 'text-gray-200'}>
+                  {outputContent}
+                </code>
+              </pre>
+            </div>
           </div>
         </div>
       </div>

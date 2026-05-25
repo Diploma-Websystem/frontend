@@ -142,11 +142,6 @@ const UrlShortenerPage = () => {
                   )}
                 </button>
               </div>
-              {result.shortCode ? (
-                <p className="mt-3 text-sm text-gray-400">
-                  Short code: <code>{result.shortCode}</code>
-                </p>
-              ) : null}
             </div>
           ) : null}
         </div>
