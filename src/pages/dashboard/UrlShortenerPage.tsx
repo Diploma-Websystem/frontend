@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Check, Copy, ExternalLink, Link2, Loader2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Check, Copy, ExternalLink, History, Link2, Loader2, X } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../../services/api'
 
@@ -7,6 +7,18 @@ interface ShortenResponse {
   shortCode?: string
   shortUrl?: string
 }
+
+interface UrlHistoryItem {
+  id: string
+  originalUrl: string
+  shortCode: string
+  shortUrl: string
+  createdAt: string
+  expiresAt?: string | null
+  isActive?: boolean
+}
+
+type ExpirePreset = '1m' | '1d' | '7d' | '30d'
 
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -19,10 +31,31 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 
 const UrlShortenerPage = () => {
   const [url, setUrl] = useState('')
+  const [expirePreset, setExpirePreset] = useState<ExpirePreset>('1m')
   const [result, setResult] = useState<ShortenResponse | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [history, setHistory] = useState<UrlHistoryItem[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null)
+
+  const expirationPayload = useMemo<{ expireInDays?: number; expireInMinutes?: number }>(() => {
+    switch (expirePreset) {
+      case '1m':
+        return { expireInMinutes: 1 }
+      case '1d':
+        return { expireInDays: 1 }
+      case '7d':
+        return { expireInDays: 7 }
+      case '30d':
+        return { expireInDays: 30 }
+      default:
+        return { expireInMinutes: 1 }
+    }
+  }, [expirePreset])
 
   const validateUrl = (value: string) => {
     try {
@@ -55,6 +88,7 @@ const UrlShortenerPage = () => {
     try {
       const { data } = await api.post<ShortenResponse>('/api/utilities/shorten', {
         url: normalizedUrl,
+        ...expirationPayload,
       })
       setResult(data)
     } catch (error) {
@@ -74,35 +108,110 @@ const UrlShortenerPage = () => {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const openHistory = async () => {
+    setIsHistoryOpen(true)
+    setIsHistoryLoading(true)
+    setHistoryError(null)
+
+    try {
+      const { data } = await api.get<UrlHistoryItem[]>('/api/utilities/shorten/history')
+      setHistory(data)
+    } catch (error) {
+      setHistoryError(
+        getApiErrorMessage(error, 'Failed to load your links history. Please sign in and try again.')
+      )
+    } finally {
+      setIsHistoryLoading(false)
+    }
+  }
+
+  const copyHistoryLink = async (id: string, shortUrl: string) => {
+    await navigator.clipboard.writeText(shortUrl)
+    setCopiedHistoryId(id)
+    setTimeout(() => setCopiedHistoryId(null), 1500)
+  }
+
+  const isExpired = (item: UrlHistoryItem) => {
+    if (item.isActive !== undefined) {
+      return !item.isActive
+    }
+
+    if (!item.expiresAt) return false
+    return new Date(item.expiresAt).getTime() <= Date.now()
+  }
+  const formatExpirationLabel = (item: UrlHistoryItem) => {
+    if (!item.expiresAt) {
+      return 'No expiration date'
+    }
+
+    const local = new Date(item.expiresAt).toLocaleString()
+    return isExpired(item) ? `Inactive since ${local}` : `Expires at ${local}`
+  }
+
+
+  const trimUrl = (value: string, max = 80) => {
+    if (value.length <= max) return value
+    return `${value.slice(0, max)}...`
+  }
+
   return (
-    <section className="flex min-h-[calc(100vh-73px)] items-center justify-center px-4 py-10 sm:px-6">
+    <section className="flex min-h-[calc(100vh-73px)] items-start justify-center px-4 py-10 sm:px-6">
       <div className="w-full max-w-3xl">
-        <header className="mb-10 text-center">
-          <h1 className="mb-3 text-3xl font-bold text-white sm:text-4xl">
-            Shorten your long links
-          </h1>
-          <p className="text-lg text-gray-400">
-            Create short, memorable URLs for sharing.
-          </p>
+        <header className="mb-10 flex flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <div>
+            <h1 className="mb-3 text-3xl font-bold text-white sm:text-4xl">Shorten your long links</h1>
+            <p className="text-lg text-gray-400">Create short, memorable URLs for sharing.</p>
+          </div>
+          <button
+            type="button"
+            onClick={openHistory}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-800"
+          >
+            <History className="h-4 w-4" />
+            My Link History
+          </button>
         </header>
 
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm sm:p-8">
-          <form className="mb-8 flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
-            <input
-              type="url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="Paste your long URL here..."
-              className="min-w-0 flex-1 rounded-xl border border-gray-800 bg-gray-950 px-5 py-4 text-base text-white placeholder:text-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-lg"
-            />
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-8 py-4 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Link2 className="h-5 w-5" />}
-              {isLoading ? 'Shortening...' : 'Shorten'}
-            </button>
+          <form className="mb-8 space-y-4" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="url"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="Paste your long URL here..."
+                className="min-w-0 flex-1 rounded-xl border border-gray-800 bg-gray-950 px-5 py-4 text-base text-white placeholder:text-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-lg"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-8 py-4 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Link2 className="h-5 w-5" />
+                )}
+                {isLoading ? 'Shortening...' : 'Shorten'}
+              </button>
+            </div>
+
+            <div className="max-w-xs">
+              <label className="mb-2 block text-sm font-medium text-gray-300" htmlFor="expiration-select">
+                Link lifetime
+              </label>
+              <select
+                id="expiration-select"
+                value={expirePreset}
+                onChange={(event) => setExpirePreset(event.target.value as ExpirePreset)}
+                className="w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="1m">1 minute (test mode)</option>
+                <option value="1d">24 hours (1 day)</option>
+                <option value="7d">7 days</option>
+                <option value="30d">30 days</option>
+              </select>
+            </div>
           </form>
 
           {errorMessage ? (
@@ -146,6 +255,117 @@ const UrlShortenerPage = () => {
           ) : null}
         </div>
       </div>
+
+      {isHistoryOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">My Link History</h2>
+                <p className="text-sm text-gray-400">
+                  Latest links first. Expired links are marked automatically.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(false)}
+                className="rounded-lg border border-gray-700 bg-gray-950 p-2 text-gray-300 hover:bg-gray-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto p-6">
+              {isHistoryLoading ? (
+                <div className="flex items-center justify-center gap-2 py-16 text-gray-300">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loading history...
+                </div>
+              ) : historyError ? (
+                <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {historyError}
+                </p>
+              ) : history.length === 0 ? (
+                <p className="rounded-lg border border-gray-800 bg-gray-950 px-4 py-8 text-center text-gray-400">
+                  У вас ще немає посилань.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((item) => {
+                    const expired = isExpired(item)
+                    return (
+                      <article
+                        key={item.id}
+                        className="rounded-xl border border-gray-800 bg-gray-950 p-4"
+                      >
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              expired
+                                ? 'border border-red-500/40 bg-red-500/10 text-red-200'
+                                : 'border border-green-500/40 bg-green-500/10 text-green-200'
+                            }`}
+                          >
+                            {expired ? 'Expired' : 'Active'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Created: {new Date(item.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <p
+                          className={`mb-3 text-xs ${
+                            expired ? 'text-red-300' : 'text-gray-400'
+                          }`}
+                        >
+                          {formatExpirationLabel(item)}
+                        </p>
+
+                        <p className="mb-2 text-sm text-gray-400">Original URL</p>
+                        <p
+                          className="mb-4 break-all text-sm text-gray-200"
+                          title={item.originalUrl}
+                        >
+                          {trimUrl(item.originalUrl)}
+                        </p>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <a
+                            href={item.shortUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-w-0 flex-1 items-center gap-2 break-all rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-indigo-400 hover:text-indigo-300"
+                          >
+                            {item.shortUrl}
+                            <ExternalLink className="h-4 w-4 shrink-0" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyHistoryLink(item.id, item.shortUrl)}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-gray-300 transition-colors hover:bg-gray-800"
+                          >
+                            {copiedHistoryId === item.id ? (
+                              <>
+                                <Check className="h-5 w-5 text-green-400" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-5 w-5" />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
