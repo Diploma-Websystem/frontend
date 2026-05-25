@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Ban, Check, Copy, ExternalLink, History, Link2, Loader2, X } from 'lucide-react'
+import { Ban, BarChart3, Check, Copy, ExternalLink, History, Link2, Loader2, Trash2, X } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../../services/api'
 
@@ -16,14 +16,22 @@ interface UrlHistoryItem {
   createdAt: string
   expiresAt?: string | null
   isActive?: boolean
+  visitCount?: number
 }
 
 type ExpirePreset = '1m' | '1d' | '7d' | '30d'
+type StatsPeriod = '7d' | '30d' | '90d' | 'all'
 type ToastType = 'success' | 'error'
 
 interface ToastState {
   message: string
   type: ToastType
+}
+
+interface ShortLinkStatsResponse {
+  totalVisits: number
+  visitsInPeriod: number
+  series: Array<{ date: string; visits: number }>
 }
 
 const getApiErrorMessage = (error: unknown, fallback: string) => {
@@ -49,6 +57,15 @@ const UrlShortenerPage = () => {
   const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null)
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
   const [deactivateDialogId, setDeactivateDialogId] = useState<string | null>(null)
+  const [deleteHistoryItemDialogId, setDeleteHistoryItemDialogId] = useState<string | null>(null)
+  const [deletingHistoryItemId, setDeletingHistoryItemId] = useState<string | null>(null)
+  const [isClearHistoryDialogOpen, setIsClearHistoryDialogOpen] = useState(false)
+  const [isClearingHistory, setIsClearingHistory] = useState(false)
+  const [statsDialogItem, setStatsDialogItem] = useState<UrlHistoryItem | null>(null)
+  const [statsPeriod, setStatsPeriod] = useState<StatsPeriod>('7d')
+  const [isStatsLoading, setIsStatsLoading] = useState(false)
+  const [statsError, setStatsError] = useState<string | null>(null)
+  const [statsData, setStatsData] = useState<ShortLinkStatsResponse | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
 
   const expirationPayload = useMemo<{ expireInDays?: number; expireInMinutes?: number }>(() => {
@@ -139,6 +156,24 @@ const UrlShortenerPage = () => {
     setHistory(data)
   }
 
+  const clearHistory = async () => {
+    setIsClearingHistory(true)
+    setHistoryError(null)
+
+    try {
+      await api.delete('/api/utilities/shorten/history')
+      setHistory([])
+      setIsClearHistoryDialogOpen(false)
+      showToast('Link history cleared.', 'success')
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Failed to clear link history.')
+      setHistoryError(message)
+      showToast(message, 'error')
+    } finally {
+      setIsClearingHistory(false)
+    }
+  }
+
   const copyHistoryLink = async (id: string, shortUrl: string) => {
     await navigator.clipboard.writeText(shortUrl)
     setCopiedHistoryId(id)
@@ -148,6 +183,48 @@ const UrlShortenerPage = () => {
   const showToast = (message: string, type: ToastType) => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 2500)
+  }
+
+  const openStatsDialog = async (item: UrlHistoryItem) => {
+    setStatsDialogItem(item)
+    setStatsPeriod('7d')
+    setStatsData(null)
+    setStatsError(null)
+    setIsStatsLoading(true)
+
+    try {
+      const { data } = await api.get<ShortLinkStatsResponse>(`/api/utilities/shorten/${item.id}/stats`, {
+        params: { period: '7d' },
+      })
+      setStatsData(data)
+    } catch (error) {
+      setStatsError(getApiErrorMessage(error, 'Failed to load link statistics.'))
+    } finally {
+      setIsStatsLoading(false)
+    }
+  }
+
+  const loadStatsForPeriod = async (period: StatsPeriod) => {
+    if (!statsDialogItem) {
+      return
+    }
+
+    setStatsPeriod(period)
+    setStatsData(null)
+    setStatsError(null)
+    setIsStatsLoading(true)
+
+    try {
+      const { data } = await api.get<ShortLinkStatsResponse>(
+        `/api/utilities/shorten/${statsDialogItem.id}/stats`,
+        { params: { period } },
+      )
+      setStatsData(data)
+    } catch (error) {
+      setStatsError(getApiErrorMessage(error, 'Failed to load link statistics.'))
+    } finally {
+      setIsStatsLoading(false)
+    }
   }
 
   const deactivateLink = async (id: string) => {
@@ -165,6 +242,24 @@ const UrlShortenerPage = () => {
       showToast(message, 'error')
     } finally {
       setDeactivatingId(null)
+    }
+  }
+
+  const deleteHistoryItem = async (id: string) => {
+    setDeletingHistoryItemId(id)
+    setHistoryError(null)
+
+    try {
+      await api.delete(`/api/utilities/shorten/history/${id}`)
+      await reloadHistory()
+      setDeleteHistoryItemDialogId(null)
+      showToast('History item deleted.', 'success')
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Failed to delete history item.')
+      setHistoryError(message)
+      showToast(message, 'error')
+    } finally {
+      setDeletingHistoryItemId(null)
     }
   }
 
@@ -303,13 +398,24 @@ const UrlShortenerPage = () => {
                   Latest links first. Expired links are marked automatically.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsHistoryOpen(false)}
-                className="rounded-lg border border-gray-700 bg-gray-950 p-2 text-gray-300 hover:bg-gray-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsClearHistoryDialogOpen(true)}
+                  disabled={isHistoryLoading || history.length === 0}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear history
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryOpen(false)}
+                  className="rounded-lg border border-gray-700 bg-gray-950 p-2 text-gray-300 hover:bg-gray-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto p-6">
@@ -384,19 +490,31 @@ const UrlShortenerPage = () => {
                         </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                          <a
-                            href={item.shortUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex min-w-0 flex-1 items-center gap-2 break-all rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-indigo-400 hover:text-indigo-300"
-                          >
-                            {item.shortUrl}
-                            <ExternalLink className="h-4 w-4 shrink-0" />
-                          </a>
+                          {expired ? (
+                            <div
+                              className="inline-flex min-w-0 flex-1 items-center gap-2 break-all rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-gray-500"
+                              title="Expired links cannot be opened"
+                            >
+                              {item.shortUrl}
+                              <ExternalLink className="h-4 w-4 shrink-0" />
+                            </div>
+                          ) : (
+                            <a
+                              href={item.shortUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex min-w-0 flex-1 items-center gap-2 break-all rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-indigo-400 hover:text-indigo-300"
+                            >
+                              {item.shortUrl}
+                              <ExternalLink className="h-4 w-4 shrink-0" />
+                            </a>
+                          )}
                           <button
                             type="button"
                             onClick={() => copyHistoryLink(item.id, item.shortUrl)}
-                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-gray-300 transition-colors hover:bg-gray-800"
+                            disabled={expired}
+                            title={expired ? 'Expired links cannot be copied' : 'Copy shortened URL'}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-gray-300 transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {copiedHistoryId === item.id ? (
                               <>
@@ -409,6 +527,28 @@ const UrlShortenerPage = () => {
                                 Copy
                               </>
                             )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openStatsDialog(item)}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-indigo-200 transition-colors hover:bg-indigo-500/20"
+                            title="Open visit stats"
+                          >
+                            <BarChart3 className="h-5 w-5" />
+                            Stats
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteHistoryItemDialogId(item.id)}
+                            disabled={deletingHistoryItemId === item.id}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-200 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {deletingHistoryItemId === item.id ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-5 w-5" />
+                            )}
+                            Delete
                           </button>
                           {!expired ? (
                             <button
@@ -431,6 +571,98 @@ const UrlShortenerPage = () => {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {statsDialogItem ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Link statistics</h3>
+                <p className="text-sm text-gray-400">{trimUrl(statsDialogItem.shortUrl, 65)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStatsDialogItem(null)}
+                className="rounded-lg border border-gray-700 bg-gray-950 p-2 text-gray-300 hover:bg-gray-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto p-6">
+              <div className="mb-4 flex flex-wrap gap-2">
+                {(['7d', '30d', '90d', 'all'] as StatsPeriod[]).map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => loadStatsForPeriod(period)}
+                    disabled={isStatsLoading}
+                    className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                      statsPeriod === period
+                        ? 'border-indigo-500/50 bg-indigo-500/20 text-indigo-200'
+                        : 'border-gray-700 bg-gray-950 text-gray-300 hover:bg-gray-800'
+                    } disabled:cursor-not-allowed disabled:opacity-70`}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
+
+              {isStatsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-16 text-gray-300">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loading stats...
+                </div>
+              ) : statsError ? (
+                <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {statsError}
+                </p>
+              ) : statsData ? (
+                <>
+                  <div className="mb-6 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Total visits</p>
+                      <p className="mt-2 text-2xl font-semibold text-white">{statsData.totalVisits}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Visits in period</p>
+                      <p className="mt-2 text-2xl font-semibold text-white">{statsData.visitsInPeriod}</p>
+                    </div>
+                  </div>
+
+                  {statsData.series.length === 0 ? (
+                    <p className="rounded-lg border border-gray-800 bg-gray-950 px-4 py-8 text-center text-gray-400">
+                      No visits in selected period.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {statsData.series.map((point) => {
+                        const maxVisits = Math.max(...statsData.series.map((x) => x.visits), 1)
+                        const widthPercent = Math.max(8, Math.round((point.visits / maxVisits) * 100))
+
+                        return (
+                          <div key={point.date}>
+                            <div className="mb-1 flex items-center justify-between text-xs text-gray-400">
+                              <span>{new Date(point.date).toLocaleDateString()}</span>
+                              <span>{point.visits}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+                              <div
+                                className="h-full rounded-full bg-indigo-500"
+                                style={{ width: `${widthPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -462,6 +694,68 @@ const UrlShortenerPage = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
                 Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteHistoryItemDialogId ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-white">Delete history item?</h3>
+            <p className="mb-6 text-sm text-gray-400">
+              This will permanently remove the selected short link from your history.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteHistoryItemDialogId(null)}
+                disabled={Boolean(deletingHistoryItemId)}
+                className="rounded-lg border border-gray-700 bg-gray-950 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteHistoryItem(deleteHistoryItemDialogId)}
+                disabled={deletingHistoryItemId === deleteHistoryItemDialogId}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {deletingHistoryItemId === deleteHistoryItemDialogId ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isClearHistoryDialogOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-white">Clear link history?</h3>
+            <p className="mb-6 text-sm text-gray-400">
+              This will permanently remove all your shortened links from history.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsClearHistoryDialogOpen(false)}
+                disabled={isClearingHistory}
+                className="rounded-lg border border-gray-700 bg-gray-950 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={clearHistory}
+                disabled={isClearingHistory}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isClearingHistory ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Clear history
               </button>
             </div>
           </div>
