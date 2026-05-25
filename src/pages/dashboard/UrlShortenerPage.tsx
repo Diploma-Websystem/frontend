@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, Copy, ExternalLink, History, Link2, Loader2, X } from 'lucide-react'
+import { Ban, Check, Copy, ExternalLink, History, Link2, Loader2, X } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../../services/api'
 
@@ -19,6 +19,12 @@ interface UrlHistoryItem {
 }
 
 type ExpirePreset = '1m' | '1d' | '7d' | '30d'
+type ToastType = 'success' | 'error'
+
+interface ToastState {
+  message: string
+  type: ToastType
+}
 
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -41,6 +47,9 @@ const UrlShortenerPage = () => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null)
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
+  const [deactivateDialogId, setDeactivateDialogId] = useState<string | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
 
   const expirationPayload = useMemo<{ expireInDays?: number; expireInMinutes?: number }>(() => {
     switch (expirePreset) {
@@ -125,10 +134,38 @@ const UrlShortenerPage = () => {
     }
   }
 
+  const reloadHistory = async () => {
+    const { data } = await api.get<UrlHistoryItem[]>('/api/utilities/shorten/history')
+    setHistory(data)
+  }
+
   const copyHistoryLink = async (id: string, shortUrl: string) => {
     await navigator.clipboard.writeText(shortUrl)
     setCopiedHistoryId(id)
     setTimeout(() => setCopiedHistoryId(null), 1500)
+  }
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 2500)
+  }
+
+  const deactivateLink = async (id: string) => {
+    setDeactivatingId(id)
+    setHistoryError(null)
+
+    try {
+      await api.post(`/api/utilities/shorten/${id}/deactivate`)
+      await reloadHistory()
+      showToast('Short link was deactivated.', 'success')
+      setDeactivateDialogId(null)
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Failed to deactivate the short link.')
+      setHistoryError(message)
+      showToast(message, 'error')
+    } finally {
+      setDeactivatingId(null)
+    }
   }
 
   const isExpired = (item: UrlHistoryItem) => {
@@ -322,12 +359,29 @@ const UrlShortenerPage = () => {
                         </p>
 
                         <p className="mb-2 text-sm text-gray-400">Original URL</p>
-                        <p
-                          className="mb-4 break-all text-sm text-gray-200"
-                          title={item.originalUrl}
-                        >
-                          {trimUrl(item.originalUrl)}
-                        </p>
+                        <div className="mb-4 flex items-center gap-2">
+                          <a
+                            href={item.originalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="min-w-0 break-all text-sm text-gray-200 hover:text-indigo-300"
+                            title={item.originalUrl}
+                          >
+                            {trimUrl(item.originalUrl)}
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyHistoryLink(`original-${item.id}`, item.originalUrl)}
+                            className="shrink-0 text-gray-400 hover:text-gray-200"
+                            title="Copy original URL"
+                          >
+                            {copiedHistoryId === `original-${item.id}` ? (
+                              <Check className="h-4 w-4 text-green-400" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                           <a
@@ -356,6 +410,21 @@ const UrlShortenerPage = () => {
                               </>
                             )}
                           </button>
+                          {!expired ? (
+                            <button
+                              type="button"
+                              onClick={() => setDeactivateDialogId(item.id)}
+                              disabled={deactivatingId === item.id}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                              {deactivatingId === item.id ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                              ) : (
+                                <Ban className="h-5 w-5" />
+                              )}
+                              Deactivate
+                            </button>
+                          ) : null}
                         </div>
                       </article>
                     )
@@ -364,6 +433,50 @@ const UrlShortenerPage = () => {
               )}
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {deactivateDialogId ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-white">Deactivate short link?</h3>
+            <p className="mb-6 text-sm text-gray-400">
+              This link will stop redirecting immediately. You can&apos;t undo this action.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeactivateDialogId(null)}
+                disabled={Boolean(deactivatingId)}
+                className="rounded-lg border border-gray-700 bg-gray-950 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deactivateLink(deactivateDialogId)}
+                disabled={deactivatingId === deactivateDialogId}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {deactivatingId === deactivateDialogId ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div
+          className={`fixed bottom-6 right-6 z-[60] rounded-lg border px-4 py-3 text-sm shadow-lg ${
+            toast.type === 'success'
+              ? 'border-green-500/40 bg-green-500/10 text-green-200'
+              : 'border-red-500/40 bg-red-500/10 text-red-200'
+          }`}
+        >
+          {toast.message}
         </div>
       ) : null}
     </section>
