@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   ArrowRight,
+  Film,
   FileJson,
   Globe,
   Image as ImageIcon,
@@ -51,6 +52,14 @@ const tools = [
     color: 'from-orange-500 to-red-500',
     accent: 'text-orange-300/90',
     path: '/dashboard/file-converter',
+  },
+  {
+    icon: Film,
+    title: 'MP4 to GIF',
+    description: 'Convert short MP4 clips to GIF',
+    color: 'from-sky-500 to-indigo-500',
+    accent: 'text-sky-300/90',
+    path: '/dashboard/mp4-to-gif',
   },
 ]
 

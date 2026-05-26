@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
 import {
   FileJson,
+  Film,
   Globe,
   Home,
   Image as ImageIcon,
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { label: 'JSON Formatter', path: '/dashboard/json-formatter', icon: FileJson },
   { label: 'IP Analyzer', path: '/dashboard/ip-analyzer', icon: Globe },
   { label: 'File Converter', path: '/dashboard/file-converter', icon: ImageIcon },
+  { label: 'MP4 to GIF', path: '/dashboard/mp4-to-gif', icon: Film },
   { label: 'Settings', path: '/dashboard/settings', icon: Settings },
 ]
 

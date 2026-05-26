@@ -7,6 +7,7 @@ import DashboardHomePage from './pages/dashboard/DashboardHomePage'
 import FileConverterPage from './pages/dashboard/FileConverterPage'
 import IpAnalyzerPage from './pages/dashboard/IpAnalyzerPage'
 import JsonFormatterPage from './pages/dashboard/JsonFormatterPage'
+import Mp4ToGifPage from './pages/dashboard/Mp4ToGifPage'
 import QrGeneratorPage from './pages/dashboard/QrGeneratorPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 import UrlShortenerPage from './pages/dashboard/UrlShortenerPage'
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: 'json-formatter', element: <JsonFormatterPage /> },
       { path: 'ip-analyzer', element: <IpAnalyzerPage /> },
       { path: 'file-converter', element: <FileConverterPage /> },
+      { path: 'mp4-to-gif', element: <Mp4ToGifPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },
