@@ -15,6 +15,9 @@ interface IpAnalyzeResult {
   timezone?: string
   latitude?: number
   longitude?: number
+  isProxy?: boolean | null
+  isHosting?: boolean | null
+  isVpn?: boolean | null
   message?: string
   errorMessage?: string
 }
@@ -106,6 +109,34 @@ const IpAnalyzerPage = () => {
     return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.02}%2C${latitude - 0.02}%2C${longitude + 0.02}%2C${latitude + 0.02}&layer=mapnik&marker=${latitude}%2C${longitude}`
   })()
 
+  const renderSecurityBadge = (
+    value: boolean | null | undefined,
+    positiveText: string,
+    negativeText: string,
+  ) => {
+    if (value === true) {
+      return (
+        <span className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-sm font-medium text-amber-300">
+          {positiveText}
+        </span>
+      )
+    }
+
+    if (value === false) {
+      return (
+        <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
+          {negativeText}
+        </span>
+      )
+    }
+
+    return (
+      <span className="rounded-lg border border-gray-600/40 bg-gray-700/20 px-3 py-1.5 text-sm font-medium text-gray-300">
+        Unknown
+      </span>
+    )
+  }
+
   return (
     <section className="min-h-[calc(100vh-73px)] px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-4xl">
@@ -188,12 +219,8 @@ const IpAnalyzerPage = () => {
                   <Shield className="h-5 w-5 text-orange-400" />
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
-                    Not a proxy
-                  </span>
-                  <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300">
-                    Not a VPN
-                  </span>
+                  {renderSecurityBadge(result.isProxy, 'Proxy detected', 'Not a proxy')}
+                  {renderSecurityBadge(result.isVpn, 'VPN/hosting detected', 'Not a VPN')}
                 </div>
               </div>
             </div>

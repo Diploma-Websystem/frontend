@@ -47,6 +47,8 @@ const FileConverterPage = () => {
     return `${file.name} • ${(file.size / 1024).toFixed(1)} KB`
   }, [file])
 
+  const isQualitySupported = outputFormat === 'jpeg' || outputFormat === 'webp' || outputFormat === 'png'
+
   const handleFileChange = (nextFile: File | null) => {
     setFile(nextFile)
     setErrorMessage(null)
@@ -157,15 +159,22 @@ const FileConverterPage = () => {
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm text-gray-300">Quality ({quality}%)</span>
+              <span className="mb-2 block text-sm text-gray-300">
+                Quality {isQualitySupported ? `(${quality}%)` : '(not used for this format)'}
+              </span>
               <input
                 type="range"
                 min={1}
                 max={100}
                 value={quality}
                 onChange={(event) => setQuality(Number(event.target.value))}
-                className="mt-2 w-full accent-indigo-500"
+                disabled={!isQualitySupported}
+                className="mt-2 w-full accent-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
+              <p className="mt-2 text-xs text-gray-500">
+                Quality is applied for JPEG/WEBP. For PNG it controls compression level.
+                GIF/BMP/TIFF ignore this setting.
+              </p>
             </label>
           </div>
 

@@ -10,6 +10,8 @@ interface QrHistoryItem {
   id: string
   content: string
   createdAt: string
+  size: number
+  errorCorrection: ErrorCorrectionOption
 }
 
 type ToastType = 'success' | 'error'
@@ -154,9 +156,15 @@ const QrGeneratorPage = () => {
     }
   }
 
-  const handleRegenerate = async (content: string) => {
-    setText(content)
-    const success = await generateQrForText(content)
+  const handleRegenerate = async (item: QrHistoryItem) => {
+    const normalizedSize = item.size === 512 || item.size === 1024 ? item.size : 256
+    const normalizedErrorCorrection =
+      item.errorCorrection === 'medium' || item.errorCorrection === 'high' ? item.errorCorrection : 'low'
+
+    setQrSize(String(normalizedSize) as QrSizeOption)
+    setErrorCorrection(normalizedErrorCorrection)
+    setText(item.content)
+    const success = await generateQrForText(item.content)
     if (success) {
       setIsHistoryOpen(false)
     }
@@ -361,32 +369,37 @@ const QrGeneratorPage = () => {
                         </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleRegenerate(item.content)}
-                        disabled={isLoading}
-                        className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-200 transition-colors hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RotateCcw className="h-4 w-4" />
-                        )}
-                        Regenerate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteHistoryItemDialogId(item.id)}
-                        disabled={deletingHistoryItemId === item.id}
-                        className="ml-3 inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        {deletingHistoryItemId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                        Delete
-                      </button>
+                      <p className="mb-3 text-xs text-gray-400">
+                        Params: {item.size}x{item.size}, {item.errorCorrection}
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleRegenerate(item)}
+                          disabled={isLoading}
+                          className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-200 transition-colors hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                          Regenerate
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteHistoryItemDialogId(item.id)}
+                          disabled={deletingHistoryItemId === item.id}
+                          className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {deletingHistoryItemId === item.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Delete
+                        </button>
+                      </div>
                     </article>
                   ))}
                 </div>

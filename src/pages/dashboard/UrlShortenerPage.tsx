@@ -639,26 +639,100 @@ const UrlShortenerPage = () => {
                       No visits in selected period.
                     </p>
                   ) : (
-                    <div className="space-y-3">
-                      {statsData.series.map((point) => {
+                    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                      {(() => {
+                        const chartWidth = 760
+                        const chartHeight = 220
+                        const paddingX = 24
+                        const yAxisWidth = 36
+                        const paddingTop = 16
+                        const paddingBottom = 30
                         const maxVisits = Math.max(...statsData.series.map((x) => x.visits), 1)
-                        const widthPercent = Math.max(8, Math.round((point.visits / maxVisits) * 100))
+                        const usableWidth = chartWidth - paddingX * 2 - yAxisWidth
+                        const usableHeight = chartHeight - paddingTop - paddingBottom
+                        const steps = Math.max(statsData.series.length - 1, 1)
+                        const yTicks = 5
+                        const yTickValues = Array.from({ length: yTicks }, (_, index) =>
+                          Math.round((maxVisits * (yTicks - 1 - index)) / (yTicks - 1)),
+                        )
+
+                        const points = statsData.series.map((point, index) => {
+                          const x = paddingX + yAxisWidth + (index / steps) * usableWidth
+                          const y = paddingTop + ((maxVisits - point.visits) / maxVisits) * usableHeight
+                          return { ...point, x, y }
+                        })
+
+                        const polyline = points.map((point) => `${point.x},${point.y}`).join(' ')
+                        const startLabel = new Date(points[0].date).toLocaleDateString()
+                        const endLabel = new Date(points[points.length - 1].date).toLocaleDateString()
 
                         return (
-                          <div key={point.date}>
-                            <div className="mb-1 flex items-center justify-between text-xs text-gray-400">
-                              <span>{new Date(point.date).toLocaleDateString()}</span>
-                              <span>{point.visits}</span>
+                          <>
+                            <div className="mb-3 flex items-center justify-end text-xs text-gray-500">
+                              <span>Max: {maxVisits}</span>
                             </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-                              <div
-                                className="h-full rounded-full bg-indigo-500"
-                                style={{ width: `${widthPercent}%` }}
+                            <svg
+                              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                              className="h-52 w-full"
+                              role="img"
+                              aria-label="Visits trend chart"
+                            >
+                              {yTickValues.map((value, index) => {
+                                const y = paddingTop + (index / (yTicks - 1)) * usableHeight
+                                return (
+                                  <g key={`tick-${value}-${index}`}>
+                                    <line
+                                      x1={paddingX + yAxisWidth}
+                                      y1={y}
+                                      x2={chartWidth - paddingX}
+                                      y2={y}
+                                      stroke="rgba(148,163,184,0.22)"
+                                      strokeWidth="1"
+                                    />
+                                    <text
+                                      x={paddingX + yAxisWidth - 8}
+                                      y={y + 4}
+                                      fill="rgba(148,163,184,0.9)"
+                                      fontSize="11"
+                                      textAnchor="end"
+                                    >
+                                      {value}
+                                    </text>
+                                  </g>
+                                )
+                              })}
+                              <line
+                                x1={paddingX + yAxisWidth}
+                                y1={chartHeight - paddingBottom}
+                                x2={chartWidth - paddingX}
+                                y2={chartHeight - paddingBottom}
+                                stroke="rgba(148,163,184,0.3)"
+                                strokeWidth="1"
                               />
+                              <polyline
+                                fill="none"
+                                stroke="rgba(99,102,241,0.95)"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                points={polyline}
+                              />
+                              {points.map((point) => (
+                                <g key={point.date}>
+                                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(129 140 248)" />
+                                  <title>
+                                    {new Date(point.date).toLocaleDateString()}: {point.visits}
+                                  </title>
+                                </g>
+                              ))}
+                            </svg>
+                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                              <span>{startLabel}</span>
+                              <span>{endLabel}</span>
                             </div>
-                          </div>
+                          </>
                         )
-                      })}
+                      })()}
                     </div>
                   )}
                 </>
