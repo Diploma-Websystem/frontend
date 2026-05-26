@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Lock, Mail } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import TrendingUtilityWidget from '../../components/auth/TrendingUtilityWidget'
 import { GithubLogo, GoogleLogo } from '../../components/ui/SocialLogos'
 import { API_BASE_URL, api, extractAccessToken, setAccessToken } from '../../services/api'
 
@@ -109,6 +110,7 @@ const LoginPage = () => {
             <p className="text-xl text-white/90">
               Powerful developer tools, beautifully designed
             </p>
+            <TrendingUtilityWidget />
           </div>
         </div>
       </aside>

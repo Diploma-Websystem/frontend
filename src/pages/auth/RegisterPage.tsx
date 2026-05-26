@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Lock, Mail, User } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import TrendingUtilityWidget from '../../components/auth/TrendingUtilityWidget'
 import { GithubLogo, GoogleLogo } from '../../components/ui/SocialLogos'
 import { API_BASE_URL, api, extractAccessToken, setAccessToken } from '../../services/api'
 
@@ -132,6 +133,7 @@ const RegisterPage = () => {
             <p className="text-xl text-white/90">
               Start using powerful utilities in seconds
             </p>
+            <TrendingUtilityWidget />
           </div>
         </div>
       </aside>
